@@ -1,6 +1,6 @@
-import asyncio
 import logging
 import sys
+import asyncio
 from VK import *
 from os import remove
 
@@ -11,7 +11,7 @@ from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.types import Message, FSInputFile
 
-load_dotenv()
+
 TG_API = getenv('TG_API')
 
 
