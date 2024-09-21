@@ -27,7 +27,10 @@ def isValidURL(url):
 
 
 def getInfo(wall_url):
-    posts = parse_qsl(urlparse(wall_url).query)[0][1].lstrip('wall')
+    try:
+        posts = parse_qsl(urlparse(wall_url).query)[0][1].lstrip('wall')
+    except IndexError:
+        posts = wall_url.split('/')[-1].lstrip('wall')
     url = "https://api.vk.com/method/wall.getById"
     response = requests.get(url, params={'access_token': VK_API, 'posts': posts, "v": "5.199"}).json()['response']['items']
 
