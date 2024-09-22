@@ -1,19 +1,23 @@
 from dotenv import load_dotenv
-from urllib.parse import urlparse, parse_qsl
 from datetime import datetime
+from os import getenv
 from random import choice
 from string import ascii_letters
-from os import getenv
-import requests
+from urllib.parse import urlparse, parse_qsl
+
+import asyncio
+from aiohttp import ClientSession
+from aiofiles import open
+
+
+load_dotenv()
+VK_API = getenv('VK_API')
+URL = "https://api.vk.com/method/wall.getById"
 
 
 def random_letters(length):
     letters = ascii_letters
     return ''.join(choice(letters) for _ in range(length))
-
-
-load_dotenv()
-VK_API = getenv('VK_API')
 
 
 def isValidURL(url):
@@ -24,33 +28,33 @@ def isValidURL(url):
         return False
 
 
-def getInfo(wall_url):
+async def getImg(img_url, session):
+    async with open(random_letters(10)+'.jpeg', mode='wb') as f:
+        filename = f.name
+        photo = await session.get(img_url)
+        async for chunk in photo.content.iter_chunked(1024):
+            await f.write(chunk)
+        return filename
+
+
+async def getData(wall_url, session):
     try:
         posts = parse_qsl(urlparse(wall_url).query)[0][1].lstrip('wall')
     except IndexError:
         posts = wall_url.split('/')[-1].lstrip('wall')
-    url = "https://api.vk.com/method/wall.getById"
-    response = requests.get(url, params={'access_token': VK_API, 'posts': posts, "v": "5.199"}, timeout=10).json()['response']['items']
+    params = {'access_token': VK_API, 'posts': posts, "v": "5.199"}
+    response = await session.get(URL, params=params)
+    response = await response.json()
+    response = response['response']['items']
+    photos_url = [i['photo']['orig_photo']['url'] for i in response[0]['attachments'] if i['type'] == 'photo']
     text = response[-1]['text']
     date = datetime.fromtimestamp(response[-1]['date'])
-    photos = []
-    for photo in response[0]['attachments']:
-        if photo['type'] == 'photo':
-            # photo_url = requests.get(photo['photo']['orig_photo']['url'])
-            name = random_letters(10) + '.jpeg'
-            # image = Image.open(BytesIO(photo_url.content))
-            # image.save(name, 'jpeg')
-            photos.append(name)
+    return text, date, photos_url
 
-            photo_url = requests.get(photo['photo']['orig_photo']['url'], stream=True)
 
-            if photo_url.status_code == 200:
-                with open(name, 'wb') as file:
-                    # Запись файла по частям
-                    for chunk in photo_url.iter_content(512):
-                        file.write(chunk)
-            else:
-                # Обработка ошибок при невозможности загрузки изображения
-                print(f'Загрузить изображение не удалось: код ответа сервера {photo_url.status_code}')
-
-    return text, date, photos
+async def mainVK(wall_url):
+    async with ClientSession() as session:
+        text, date, photos_url = await getData(wall_url, session)
+        tasks = [asyncio.create_task(getImg(url, session)) for url in photos_url]
+        photos = await asyncio.gather(*tasks)
+        return text, date, photos

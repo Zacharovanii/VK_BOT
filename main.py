@@ -1,6 +1,5 @@
 import logging
 import sys
-import asyncio
 from VK import *
 from os import remove
 
@@ -27,7 +26,7 @@ async def command_start_handler(message: Message) -> None:
 async def echo_handler(message: Message) -> None:
     url = message.text
     if isValidURL(url):
-        text, date, photos = getInfo(url)
+        text, date, photos = await mainVK(url)
         first = html.bold("Текст поста:")
         second = html.bold(f"Время создания: {date}")
         await message.answer(f"{first}\n{text}\n\n{second}")
