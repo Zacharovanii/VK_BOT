@@ -20,13 +20,14 @@ dp = Dispatcher()
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
+    await message.answer("Я бот для анализа постов вк. На данный момент я умею считывать текст, дату и картинки поста")
 
 
 @dp.message()
 async def echo_handler(message: Message) -> None:
-    url = message.text
-    if isValidURL(url):
-        text, date, photos = await mainVK(url)
+    posts = isValidURL(message.text)
+    if posts:
+        text, date, photos = await mainVK(posts)
         first = html.bold("Текст поста:")
         second = html.bold(f"Время создания: {date}")
         await message.answer(f"{first}\n{text}\n\n{second}")
@@ -34,6 +35,8 @@ async def echo_handler(message: Message) -> None:
             for photo in photos:
                 await message.answer_document(FSInputFile(photo))
                 remove(photo)
+    else:
+        await message.answer(f"Невалидная ссылка, попробуй еще раз")
 
 
 async def main() -> None:

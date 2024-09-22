@@ -20,12 +20,19 @@ def random_letters(length):
     return ''.join(choice(letters) for _ in range(length))
 
 
-def isValidURL(url):
-    try:
-        result = urlparse(url)
-        return all([result.scheme, result.netloc])
-    except ValueError:
+def isValidURL(wall_url):
+    if 'wall' not in wall_url:
         return False
+    try:
+        result = urlparse(wall_url)
+        if all([result.scheme, result.netloc, 'wall' in wall_url]):
+            posts = parse_qsl(urlparse(wall_url).query)[0][1].lstrip('wall')
+            return posts
+        else:
+            return False
+    except IndexError:
+        posts = wall_url.split('/')[-1].lstrip('wall')
+        return posts
 
 
 async def getImg(img_url, session):
@@ -37,11 +44,7 @@ async def getImg(img_url, session):
         return filename
 
 
-async def getData(wall_url, session):
-    try:
-        posts = parse_qsl(urlparse(wall_url).query)[0][1].lstrip('wall')
-    except IndexError:
-        posts = wall_url.split('/')[-1].lstrip('wall')
+async def getData(posts, session):
     params = {'access_token': VK_API, 'posts': posts, "v": "5.199"}
     response = await session.get(URL, params=params)
     response = await response.json()
@@ -52,9 +55,9 @@ async def getData(wall_url, session):
     return text, date, photos_url
 
 
-async def mainVK(wall_url):
+async def mainVK(posts):
     async with ClientSession() as session:
-        text, date, photos_url = await getData(wall_url, session)
+        text, date, photos_url = await getData(posts, session)
         tasks = [asyncio.create_task(getImg(url, session)) for url in photos_url]
         photos = await asyncio.gather(*tasks)
         return text, date, photos
