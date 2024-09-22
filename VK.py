@@ -25,7 +25,7 @@ def isValidURL(wall_url):
         return False
     try:
         result = urlparse(wall_url)
-        if all([result.scheme, result.netloc, 'wall' in wall_url]):
+        if all([result.scheme, result.netloc]):
             posts = parse_qsl(urlparse(wall_url).query)[0][1].lstrip('wall')
             return posts
         else:
@@ -49,8 +49,12 @@ async def getData(posts, session):
     response = await session.get(URL, params=params)
     response = await response.json()
     response = response['response']['items']
-    photos_url = [i['photo']['orig_photo']['url'] for i in response[0]['attachments'] if i['type'] == 'photo']
-    text = response[-1]['text']
+    try:
+        text = response[0]["copy_history"][0]["text"]
+        photos_url = [i['photo']['orig_photo']['url'] for i in response[0]["copy_history"][0]['attachments'] if i['type'] == 'photo']
+    except KeyError:
+        text = response[-1]['text']
+        photos_url = [i['photo']['orig_photo']['url'] for i in response[0]['attachments'] if i['type'] == 'photo']
     date = datetime.fromtimestamp(response[-1]['date'])
     return text, date, photos_url
 
